@@ -1,0 +1,58 @@
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/10 * * * *"
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup git
+        run: |
+          git config --global user.email "ci@konaspider.local"
+          git config --global user.name "konaspider_ci"
+
+      - name: Install Lua and dependencies
+        run: |
+          sudo apt update -qq
+          sudo apt install -y lua5.4 liblua5.4-dev luarocks libssl-dev
+
+      - name: Install Lua rocks
+        run: |
+          sudo luarocks install luasocket --lua-version 5.4
+          sudo luarocks install luasec --lua-version 5.4
+          sudo luarocks install lua-cjson --lua-version 5.4
+          sudo luarocks install luafilesystem --lua-version 5.4
+          sudo luarocks install inspect --lua-version 5.4
+
+      - name: Start FlareSolverr
+        run: |
+          docker pull ghcr.io/flaresolverr/flaresolverr:latest
+          docker run -d --rm --name flaresolverr -p 8191:8191 ghcr.io/flaresolverr/flaresolverr:latest
+          echo "Waiting for FlareSolverr to be ready..."
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:8191/v1 > /dev/null 2>&1; then
+              echo "FlareSolverr is ready"
+              break
+            fi
+            echo "  attempt $i/30..."
+            sleep 2
+          done
+          curl -s http://localhost:8191/v1 | head -c 100
+
+      - name: Run crawler
+        run: lua5.4 main.lua 2>&1 | tee /dev/stderr
+
+      - name: Show log
+        if: always()
+        run: cat crawler.log
+
+      - name: Upload data
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-data
+          path: .data/
