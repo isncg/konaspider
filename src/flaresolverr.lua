@@ -8,7 +8,16 @@ local M = {}
 M.FLARESOLVERR_URL = "http://localhost:8191/v1"
 M.TIMEOUT = 120000
 
-function M.request_get(url, cookies)
+local function headers_to_fs(headers)
+    if not headers then return nil end
+    local fs = {}
+    for k, v in pairs(headers) do
+        fs[#fs + 1] = { name = k, value = v }
+    end
+    return fs
+end
+
+function M.request_get(url, cookies, headers)
     local payload = {
         cmd = "request.get",
         url = url,
@@ -16,6 +25,10 @@ function M.request_get(url, cookies)
     }
     if cookies then
         payload.cookies = cookies
+    end
+    local fs_headers = headers_to_fs(headers)
+    if fs_headers then
+        payload.headers = fs_headers
     end
 
     local body = json.encode(payload)
@@ -53,10 +66,10 @@ function M.request_get(url, cookies)
     return data
 end
 
-function M.fetch(url)
+function M.fetch(url, headers)
     logger.info("FlareSolverr: solving challenge for " .. url .. " ...")
 
-    local data = M.request_get(url)
+    local data = M.request_get(url, nil, headers)
     if not data then
         return nil, nil, nil
     end
@@ -81,6 +94,7 @@ function M.fetch(url)
     end
 
     logger.info("FlareSolverr: solved, status=" .. tostring(status) .. ", body=" .. #body .. " bytes")
+    logger.preview(body)
 
     return body, status, cookies, solution.headers
 end

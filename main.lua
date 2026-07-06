@@ -72,7 +72,7 @@ print("=== KonaSpider ===")
 print("Attempting FlareSolverr at " .. flaresolverr.FLARESOLVERR_URL .. " ...")
 print()
 
-local body, status, cookies = flaresolverr.fetch(TARGET_URL)
+local body, status, cookies = flaresolverr.fetch(TARGET_URL, http.base_headers)
 
 if body and status == 200 then
     save_cookies_to_headers(cookies or {})
