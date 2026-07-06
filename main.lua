@@ -17,8 +17,21 @@ function ensure_dir(dir)
     end
 end
 
+function strip_html(body)
+    local inner = body:match("<pre>(.-)</pre>")
+    if inner then
+        inner = inner:gsub("&quot;", '"')
+        inner = inner:gsub("&amp;", "&")
+        inner = inner:gsub("&lt;", "<")
+        inner = inner:gsub("&gt;", ">")
+        inner = inner:gsub("&#39;", "'")
+        return inner
+    end
+    return body
+end
+
 function parse_and_save_json(body)
-    -- Try to decode JSON (response might be a single JSON object or HTML)
+    body = strip_html(body)
     local ok, data = pcall(json.decode, body)
     if not ok or not data then
         logger.warn("response is not valid JSON, checking if it's still a challenge page...")
